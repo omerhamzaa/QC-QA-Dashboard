@@ -437,6 +437,11 @@ function buildPrintDoc(innerHTML, title) {
     /* screen par bhi wahi shakl dikhe jo print par aayegi */
     '<style>body{background:#fff;margin:0;padding:0;}' +
     '#printDoc{display:block !important;}' +
+    '#printSheet{display:block !important; visibility:visible !important;}' +
+    /* nayi window mein app ka shell nahi hai, is liye "sab chhupa do"
+       wala rule yahan bekaar hai — use band kar rahe hain */
+    '@media print{ body *{visibility:visible !important;}' +
+    '#printSheet{position:static !important;} }' +
     '.qc-printbar{position:fixed;top:0;left:0;right:0;background:#0b1f3a;color:#fff;' +
     'font:600 12px system-ui;padding:8px 14px;z-index:99999;text-align:center;}' +
     '.qc-printbar button{margin-left:10px;font:600 12px system-ui;padding:4px 12px;' +
@@ -446,7 +451,7 @@ function buildPrintDoc(innerHTML, title) {
     '</hea' + 'd><bo' + 'dy class="qc-shift">' +
     '<div class="qc-printbar">Print dialog khul raha hai\u2026 na khule to ' +
     '<button onclick="window.print()">\ud83d\udda8\ufe0f Print / Save as PDF</button></div>' +
-    '<div id="printDoc">' + innerHTML + '</div>' +
+    '<div id="printSheet"><div id="printDoc">' + innerHTML + '</div></div>' +
     '<' + 'script>setTimeout(function(){try{window.print();}catch(e){}},600);<' + '/script>' +
     '</bo' + 'dy></ht' + 'ml>';
 }
@@ -499,9 +504,9 @@ function showPrintFallback(innerHTML) {
   bar.appendChild(wrap);
 
   const body = document.createElement('div');
-  body.id = 'printDoc';
+  body.id = 'qcPrintSheetCopy';
   body.style.display = 'block';
-  body.innerHTML = innerHTML;
+  body.innerHTML = '<div class="doc-wrap">' + innerHTML + '</div>';
 
   ov.appendChild(bar); ov.appendChild(body);
   document.body.appendChild(ov);
