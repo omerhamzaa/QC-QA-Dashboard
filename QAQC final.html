@@ -617,6 +617,194 @@ setInterval(addIframeHelpers, 3000);
 })();
 
 </script>
+<script>
+/* =====================================================================
+   IFRAME-SAFE DIALOGS  (Google Sites embed fix)
+   ---------------------------------------------------------------------
+   Chrome/Edge cross-origin iframe ke andar window.alert / confirm /
+   prompt ko block kar dete hain. confirm() chup-chaap `false` return
+   karta hai -> is liye har "Delete" button kaam karna band kar deta hai
+   (kyunki code likha hai: if(!confirm(...)) return;).
+
+   Neeche in-page modal dialogs hain jo iframe mein bhi chalte hain:
+     await qcConfirm(msg)          -> true / false
+     await qcPrompt(msg, default)  -> string ya null
+     qcAlert(msg)                  -> window.alert bhi isi par redirect
+   ===================================================================== */
+(function () {
+'use strict';
+
+var CSS = ''
++ '.qc-dlg-back{position:fixed; inset:0; z-index:2147483000; background:rgba(11,31,58,.55);'
++ ' display:flex; align-items:center; justify-content:center; padding:18px;'
++ ' -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);}'
++ '.qc-dlg{background:#fff; color:#1c2733; width:100%; max-width:440px; border-radius:14px;'
++ ' box-shadow:0 18px 50px rgba(0,0,0,.35); overflow:hidden;'
++ ' font-family:inherit; animation:qcDlgIn .13s ease-out;}'
++ '@keyframes qcDlgIn{from{transform:translateY(8px); opacity:0;}to{transform:none; opacity:1;}}'
++ '.qc-dlg-head{background:#0b1f3a; color:#fff; padding:12px 18px; font-size:13.5px;'
++ ' font-weight:700; letter-spacing:.3px; display:flex; align-items:center; gap:8px;}'
++ '.qc-dlg-head.danger{background:#b3261e;}'
++ '.qc-dlg-body{padding:18px; font-size:14px; line-height:1.55; white-space:pre-wrap; word-break:break-word;'
++ ' max-height:52vh; overflow:auto;}'
++ '.qc-dlg-body input{width:100%; margin-top:12px; padding:9px 11px; font-size:14px;'
++ ' border:1px solid #dfe3ea; border-radius:8px; box-sizing:border-box; font-family:inherit;}'
++ '.qc-dlg-body input:focus{outline:none; border-color:#1e4272; box-shadow:0 0 0 3px rgba(30,66,114,.13);}'
++ '.qc-dlg-foot{display:flex; justify-content:flex-end; gap:8px; padding:12px 18px 16px;'
++ ' border-top:1px solid #eef0f4; background:#fafbfc;}'
++ '.qc-dlg-foot button{border:none; border-radius:8px; padding:9px 18px; font-size:13px;'
++ ' font-weight:700; cursor:pointer; font-family:inherit; transition:.15s;}'
++ '.qc-dlg-btn-ok{background:#0b1f3a; color:#fff;}'
++ '.qc-dlg-btn-ok:hover{background:#15335c;}'
++ '.qc-dlg-btn-danger{background:#b3261e; color:#fff;}'
++ '.qc-dlg-btn-danger:hover{background:#8e1d17;}'
++ '.qc-dlg-btn-cancel{background:#fff; color:#1c2733; border:1px solid #dfe3ea;}'
++ '.qc-dlg-btn-cancel:hover{background:#f2f3f6;}'
++ '@media print{.qc-dlg-back{display:none !important;}}';
+
+var styled = false;
+function injectCSS() {
+  if (styled) return;
+  styled = true;
+  try {
+    var s = document.createElement('style');
+    s.setAttribute('data-qc-dialogs', '1');
+    s.textContent = CSS;
+    (document.head || document.documentElement).appendChild(s);
+  } catch (e) { /* ignore */ }
+}
+
+/* ek waqt mein ek hi dialog: queue */
+var chain = Promise.resolve();
+
+function build(opts) {
+  injectCSS();
+  return new Promise(function (resolve) {
+    var back = document.createElement('div');
+    back.className = 'qc-dlg-back';
+
+    var box = document.createElement('div');
+    box.className = 'qc-dlg';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+
+    var head = document.createElement('div');
+    head.className = 'qc-dlg-head' + (opts.danger ? ' danger' : '');
+    head.textContent = opts.title || 'Notice';
+
+    var body = document.createElement('div');
+    body.className = 'qc-dlg-body';
+    body.textContent = String(opts.message == null ? '' : opts.message);
+
+    var input = null;
+    if (opts.kind === 'prompt') {
+      input = document.createElement('input');
+      input.type = opts.password ? 'password' : 'text';
+      input.value = opts.def || '';
+      body.appendChild(input);
+    }
+
+    var foot = document.createElement('div');
+    foot.className = 'qc-dlg-foot';
+
+    var done = false;
+    function finish(val) {
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey, true);
+      try { back.remove(); } catch (e) { /* ignore */ }
+      resolve(val);
+    }
+
+    var cancelBtn = null;
+    if (opts.kind !== 'alert') {
+      cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'qc-dlg-btn-cancel';
+      cancelBtn.textContent = opts.cancelText || 'Cancel';
+      cancelBtn.onclick = function () { finish(opts.kind === 'prompt' ? null : false); };
+      foot.appendChild(cancelBtn);
+    }
+
+    var okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.className = opts.danger ? 'qc-dlg-btn-danger' : 'qc-dlg-btn-ok';
+    okBtn.textContent = opts.okText || 'OK';
+    okBtn.onclick = function () {
+      if (opts.kind === 'prompt') finish(input ? input.value : '');
+      else if (opts.kind === 'confirm') finish(true);
+      else finish(undefined);
+    };
+    foot.appendChild(okBtn);
+
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault(); e.stopPropagation();
+        if (opts.kind === 'alert') finish(undefined);
+        else finish(opts.kind === 'prompt' ? null : false);
+      } else if (e.key === 'Enter') {
+        if (opts.kind === 'prompt' && document.activeElement !== input) return;
+        e.preventDefault(); e.stopPropagation();
+        okBtn.click();
+      }
+    }
+    document.addEventListener('keydown', onKey, true);
+
+    /* background par click = cancel (alert ke ilawa) */
+    back.addEventListener('mousedown', function (e) {
+      if (e.target !== back) return;
+      if (opts.kind === 'alert') finish(undefined);
+      else finish(opts.kind === 'prompt' ? null : false);
+    });
+
+    box.appendChild(head); box.appendChild(body); box.appendChild(foot);
+    back.appendChild(box);
+    (document.body || document.documentElement).appendChild(back);
+
+    setTimeout(function () { try { (input || okBtn).focus(); if (input) input.select(); } catch (e) {} }, 30);
+  });
+}
+
+function queue(opts) {
+  var run = chain.then(function () { return build(opts); });
+  chain = run.catch(function () {});
+  return run;
+}
+
+window.qcAlert = function (message, title) {
+  return queue({ kind: 'alert', message: message, title: title || 'Notice' });
+};
+window.qcConfirm = function (message, opts) {
+  opts = opts || {};
+  return queue({
+    kind: 'confirm', message: message,
+    title: opts.title || 'Please confirm',
+    okText: opts.okText || 'Yes, continue',
+    cancelText: opts.cancelText || 'Cancel',
+    danger: opts.danger !== false
+  });
+};
+window.qcPrompt = function (message, def, opts) {
+  opts = opts || {};
+  return queue({
+    kind: 'prompt', message: message, def: def || '',
+    title: opts.title || 'Input required',
+    okText: opts.okText || 'OK',
+    password: !!opts.password
+  });
+};
+
+/* native alert ko modal par redirect — return value kahin use nahi hoti,
+   is liye ye 100% mehfooz hai aur poori app ke alerts ek saath theek ho jate hain */
+window.alert = function (message) { window.qcAlert(message); };
+
+/* confirm/prompt ko jaan bhoojh kar override NAHI kiya —
+   Promise hamesha truthy hoti hai, to purana `if(!confirm(...))` code
+   ULTA chal parta (bina poochhe delete). Har call site par
+   `await qcConfirm(...)` / `await qcPrompt(...)` laga diya gaya hai. */
+
+})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body class="ps-bordered">
@@ -2194,14 +2382,14 @@ function saveProjectForm(){
   if(id && id===currentProjectId()){ applyProjectBranding(); prepareProjectWatermark(); }
   if(projectFormReturn==='screen') renderProjectScreen(); else renderProjectsPage();
 }
-function deleteProject(id){
+async function deleteProject(id){
   const list = getProjects();
   const p = list.find(x=>x.id===id); if(!p) return;
   if(list.length<=1){ alert('You cannot delete the only remaining project.'); return; }
   if(id===currentProjectId()){ alert('This project is currently open. Switch to another project first, then delete this one.'); return; }
   const c = projectRecordCounts(p);
-  if(!confirm(`Delete project "${p.name}" and ALL its data (${c.records} reports, ${c.obs} observations, and its setup lists)?\n\nThis cannot be undone.`)) return;
-  if(!confirm('Are you absolutely sure? Type OK to permanently delete "'+p.name+'".')) return;
+  if(!(await qcConfirm(`Delete project "${p.name}" and ALL its data (${c.records} reports, ${c.obs} observations, and its setup lists)?\n\nThis cannot be undone.`, {title:'Delete project', okText:'Delete everything'}))) return;
+  if(!(await qcConfirm('Are you absolutely sure? This will permanently delete "'+p.name+'".', {title:'Final confirmation', okText:'Yes, delete permanently'}))) return;
   const prefix = 'qc_p_'+id+'_';
   const doomed = [];
   for(let i=0;i<localStorage.length;i++){ const k = localStorage.key(i); if(k && k.startsWith(prefix)) doomed.push(k); }
@@ -2350,13 +2538,13 @@ function exportFullAppWithData(){
 }
 function importAllDataFile(file){
   const reader = new FileReader();
-  reader.onload = (e)=>{
+  reader.onload = async (e)=>{
     let parsed;
     try{ parsed = JSON.parse(e.target.result); }
     catch(err){ alert('Could not read this file — please make sure it is a valid V-Grand QA/QC backup JSON file.'); return; }
     const data = (parsed && parsed.data && typeof parsed.data==='object') ? parsed.data : parsed;
     if(!data || typeof data !== 'object'){ alert('Could not read this file — please make sure it is a valid V-Grand QA/QC backup JSON file.'); return; }
-    if(!confirm('This will REPLACE all current data in this app (records, setup lists, users) with the imported backup. Continue?')) return;
+    if(!(await qcConfirm('This will REPLACE all current data in this app (records, setup lists, users) with the imported backup. Continue?', {title:'Restore backup', okText:'Replace all data'}))) return;
     Object.keys(data).forEach(k=>{ if(k.startsWith('qc_')) localStorage.setItem(k, data[k]); });
     alert('Data restored successfully. The app will now reload.');
     location.reload();
@@ -2396,9 +2584,9 @@ function setFieldValue(el, val){
   }
   el.value = val;
 }
-function handleSetupFieldChange(selectEl, fieldKey){
+async function handleSetupFieldChange(selectEl, fieldKey){
   if(selectEl.value === '__add_new__'){
-    const val = (window.prompt('Add a new ' + (SETUP_LABELS[fieldKey]||fieldKey) + ':') || '').trim();
+    const val = (await qcPrompt('Add a new ' + (SETUP_LABELS[fieldKey]||fieldKey) + ':', '', {title:'Add new item'}) || '').trim();
     if(val){ addSetupValue(fieldKey, val); setFieldValue(selectEl, val); }
     else { selectEl.value = ''; }
   }
@@ -2556,12 +2744,12 @@ function submitUserForm(){
   cancelUserEdit();
   renderUsersTable();
 }
-function deleteUser(i){
+async function deleteUser(i){
   let users = getUsers()||[];
   const target = users[i]; if(!target) return;
   const adminCount = users.filter(u=>u.role==='Admin').length;
   if(target.role==='Admin' && adminCount<=1){ alert('You cannot delete the last remaining Admin user.'); return; }
-  if(!confirm('Delete user "'+target.username+'"?')) return;
+  if(!(await qcConfirm('Delete user "'+target.username+'"?', {title:'Delete user', okText:'Delete user'}))) return;
   users.splice(i,1);
   saveUsers(users);
   renderUsersTable();
@@ -3009,8 +3197,8 @@ function updateObsField(id, key, value){
   row[key] = value;
   saveObsData(data);
 }
-function deleteObsRow(id){
-  if(!window.confirm('Delete this observation row?')) return;
+async function deleteObsRow(id){
+  if(!(await qcConfirm('Delete this observation row?', {title:'Delete observation', okText:'Delete row'}))) return;
   let data = getObsData();
   data = data.filter(r=>r.id!==id);
   saveObsData(data);
@@ -3623,8 +3811,8 @@ function performEditRecord(id){
   renderPhotoGallery();
   switchSubtab('entry');
 }
-function deleteRecord(id){
-  if(!confirm('Delete this record permanently?')) return;
+async function deleteRecord(id){
+  if(!(await qcConfirm('Delete this record permanently?', {title:'Delete record', okText:'Delete record'}))) return;
   saveRecordsList(loadRecords().filter(r=>r.id!==id));
   renderRecords();
 }
@@ -4765,8 +4953,8 @@ window.qcMigrateLocalToSupabase = async function () {
   if (!pid) { alert('Pehle wo project kholen jismein data daalna hai.'); return; }
 
   /* ---- password ---- */
-  const pw = prompt('Ye purana data "' + projectName() + '" mein upload kar dega.\n\n' +
-                    'Upload password likhein:');
+  const pw = await qcPrompt('Ye purana data "' + projectName() + '" mein upload kar dega.\n\n' +
+                    'Upload password likhein:', '', {title:'Upload password', password:true});
   if (pw === null) return;
   if (pw !== QC_UPLOAD_PASSWORD) { alert('Password ghalat hai.'); return; }
 
@@ -4795,7 +4983,7 @@ window.qcMigrateLocalToSupabase = async function () {
     return;
   }
 
-  if (!confirm(found + ' items mile. Upload karein?')) return;
+  if (!(await qcConfirm(found + ' items mile. Upload karein?', {title:'Confirm upload', okText:'Upload', danger:false}))) return;
 
   let n = 0;
   showBanner('Upload chal raha hai…', '#0b1f3a', 0);
