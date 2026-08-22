@@ -794,6 +794,35 @@ window.qcPrompt = function (message, def, opts) {
   });
 };
 
+/* =====================================================================
+   DELETE PASSWORD GATE
+   ---------------------------------------------------------------------
+   Har delete action se PEHLE password poocha jayega. Sahi password ke
+   baghair kuch bhi delete nahi hoga.
+
+   Istemal:  if(!(await qcDeleteAuth('kya delete ho raha hai'))) return;
+   ===================================================================== */
+var QC_DELETE_PASSWORD = '03239006200';
+
+window.qcDeleteAuth = function (what) {
+  return queue({
+    kind    : 'prompt',
+    message : 'Delete karne ke liye password daalein.' + (what ? ('\n\n' + what) : ''),
+    def     : '',
+    title   : '🔒 Password required',
+    okText  : 'Continue',
+    password: true
+  }).then(function (val) {
+    if (val === null) return false;                       /* Cancel / Esc */
+    if (String(val).trim() === QC_DELETE_PASSWORD) return true;
+    return queue({
+      kind   : 'alert',
+      message: 'Ghalat password — delete cancel kar diya gaya.',
+      title  : 'Access denied'
+    }).then(function () { return false; });
+  });
+};
+
 /* native alert ko modal par redirect — return value kahin use nahi hoti,
    is liye ye 100% mehfooz hai aur poori app ke alerts ek saath theek ho jate hain */
 window.alert = function (message) { window.qcAlert(message); };
@@ -2387,6 +2416,7 @@ async function deleteProject(id){
   const p = list.find(x=>x.id===id); if(!p) return;
   if(list.length<=1){ alert('You cannot delete the only remaining project.'); return; }
   if(id===currentProjectId()){ alert('This project is currently open. Switch to another project first, then delete this one.'); return; }
+  if(!(await qcDeleteAuth('Project: "'+p.name+'"'))) return;
   const c = projectRecordCounts(p);
   if(!(await qcConfirm(`Delete project "${p.name}" and ALL its data (${c.records} reports, ${c.obs} observations, and its setup lists)?\n\nThis cannot be undone.`, {title:'Delete project', okText:'Delete everything'}))) return;
   if(!(await qcConfirm('Are you absolutely sure? This will permanently delete "'+p.name+'".', {title:'Final confirmation', okText:'Yes, delete permanently'}))) return;
@@ -2749,6 +2779,7 @@ async function deleteUser(i){
   const target = users[i]; if(!target) return;
   const adminCount = users.filter(u=>u.role==='Admin').length;
   if(target.role==='Admin' && adminCount<=1){ alert('You cannot delete the last remaining Admin user.'); return; }
+  if(!(await qcDeleteAuth('User: "'+target.username+'"'))) return;
   if(!(await qcConfirm('Delete user "'+target.username+'"?', {title:'Delete user', okText:'Delete user'}))) return;
   users.splice(i,1);
   saveUsers(users);
@@ -3198,6 +3229,7 @@ function updateObsField(id, key, value){
   saveObsData(data);
 }
 async function deleteObsRow(id){
+  if(!(await qcDeleteAuth('Observation row'))) return;
   if(!(await qcConfirm('Delete this observation row?', {title:'Delete observation', okText:'Delete row'}))) return;
   let data = getObsData();
   data = data.filter(r=>r.id!==id);
@@ -3812,6 +3844,7 @@ function performEditRecord(id){
   switchSubtab('entry');
 }
 async function deleteRecord(id){
+  if(!(await qcDeleteAuth('Inspection record'))) return;
   if(!(await qcConfirm('Delete this record permanently?', {title:'Delete record', okText:'Delete record'}))) return;
   saveRecordsList(loadRecords().filter(r=>r.id!==id));
   renderRecords();
