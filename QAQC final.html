@@ -449,7 +449,7 @@ function buildPrintDoc(innerHTML, title) {
     '@media print{.qc-printbar{display:none !important;}}' +
     '.qc-shift{padding-top:38px;}</style>' +
     '</hea' + 'd><bo' + 'dy class="qc-shift">' +
-    '<div class="qc-printbar">Print dialog khul raha hai\u2026 na khule to ' +
+    '<div class="qc-printbar">The print dialog is opening\u2026 if it does not, click ' +
     '<button onclick="window.print()">\ud83d\udda8\ufe0f Print / Save as PDF</button></div>' +
     '<div id="printSheet"><div id="printDoc">' + innerHTML + '</div></div>' +
     '<' + 'script>setTimeout(function(){try{window.print();}catch(e){}},600);<' + '/script>' +
@@ -486,17 +486,17 @@ function showPrintFallback(innerHTML) {
   const bar = document.createElement('div');
   bar.style.cssText = 'position:sticky;top:0;background:#0b1f3a;color:#fff;font:600 12px system-ui;' +
     'padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;';
-  bar.innerHTML = '<span>Print ke liye app ko naye tab mein kholen \u2014 embed ke andar ' +
-                  'browser poora page chhaap deta hai.</span>';
+  bar.innerHTML = '<span>To print, open the app in a new tab \u2014 inside the embed ' +
+                  'the browser prints the whole page.</span>';
 
   const wrap = document.createElement('span');
   const b1 = document.createElement('button');
-  b1.textContent = 'Naye tab mein kholen \u2197';
+  b1.textContent = 'Open in new tab \u2197';
   b1.style.cssText = 'font:600 12px system-ui;padding:5px 12px;border:0;border-radius:4px;' +
                      'background:#c9a227;color:#0b1f3a;cursor:pointer;margin-right:8px;';
   b1.onclick = function () { window.open(location.href, '_blank'); };
   const b2 = document.createElement('button');
-  b2.textContent = 'Band karein';
+  b2.textContent = 'Close';
   b2.style.cssText = 'font:600 12px system-ui;padding:5px 12px;border:1px solid #fff;' +
                      'border-radius:4px;background:transparent;color:#fff;cursor:pointer;';
   b2.onclick = function () { ov.remove(); };
@@ -557,9 +557,9 @@ document.addEventListener('click', function (e) {
     /* origin "null" — blob download aur blob tab dono block hain */
     e.preventDefault();
     e.stopPropagation();
-    alert('File download embed ke andar kaam nahi karta.\n\n' +
-          'Upar daayen "Naye tab mein kholen \u2197" par click karein, ' +
-          'phir wahan se download karein.');
+    alert('File download does not work inside the embed.\n\n' +
+          'Click "Open in new tab \u2197" at the top right, ' +
+          'then download from there.');
     return;
   }
   /* sandbox mein download chup-chaap fail ho sakta hai; nayi tab yaqeeni hai */
@@ -582,8 +582,8 @@ function addIframeHelpers() {
   if (bar && !document.getElementById('qcOpenNewTab')) {
     const btn = document.createElement('button');
     btn.id = 'qcOpenNewTab';
-    btn.textContent = 'Naye tab mein kholen ↗';
-    btn.title = 'Poori functionality (print, download) naye tab mein behtar chalti hai';
+    btn.textContent = 'Open in new tab ↗';
+    btn.title = 'Full functionality (print, download) works better in a new tab';
     btn.style.cssText = 'margin-left:10px;font:600 11px system-ui;padding:6px 12px;' +
       'border:1px solid rgba(255,255,255,.4);border-radius:6px;background:transparent;' +
       'color:#fff;cursor:pointer;white-space:nowrap;';
@@ -597,9 +597,9 @@ function addIframeHelpers() {
     const n = document.createElement('div');
     n.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:10000;background:#8a5a00;' +
       'color:#fff;font:600 12px system-ui;padding:10px 16px;text-align:center;cursor:pointer;';
-    n.textContent = 'ℹ️ Ye page embed ke andar chal raha hai, isliye login yaad nahi rahega ' +
-                    '(har refresh par dobara sign in karna hoga). Behtar tajurbe ke liye ' +
-                    '"Naye tab mein kholen ↗" use karein. — band karne ke liye click karein';
+    n.textContent = 'ℹ️ This page is running inside an embed, so the login will not be remembered ' +
+                    '(you will have to sign in again after every refresh). For a better experience, ' +
+                    'use "Open in new tab ↗". — click to close';
     n.onclick = function () { n.remove(); };
     document.body.appendChild(n);
   }
@@ -807,7 +807,7 @@ var QC_DELETE_PASSWORD = '03239006200';
 window.qcDeleteAuth = function (what) {
   return queue({
     kind    : 'prompt',
-    message : 'Delete karne ke liye password daalein.' + (what ? ('\n\n' + what) : ''),
+    message : 'Enter the password to delete.' + (what ? ('\n\n' + what) : ''),
     def     : '',
     title   : '🔒 Password required',
     okText  : 'Continue',
@@ -817,7 +817,7 @@ window.qcDeleteAuth = function (what) {
     if (String(val).trim() === QC_DELETE_PASSWORD) return true;
     return queue({
       kind   : 'alert',
-      message: 'Ghalat password — delete cancel kar diya gaya.',
+      message: 'Incorrect password — delete cancelled.',
       title  : 'Access denied'
     }).then(function () { return false; });
   });
@@ -4112,13 +4112,13 @@ const SUPABASE_URL      = 'https://hqnvnkrbxsercqhpymtw.supabase.co';   /* <<< y
 const SUPABASE_ANON_KEY = 'sb_publishable_4fjY3KtZwEmo-D5F9JCVKA_oQETwt5N';   /* <<< yahan apni anon public key daalein */
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  showBanner('⚠ Supabase configured nahi hai — app abhi sirf is browser ' +
-             '(localStorage) par chal rahi hai. HTML file ke aakhir mein ' +
-             'SUPABASE_URL aur SUPABASE_ANON_KEY bharein.', '#8a5a00');
+  showBanner('⚠ Supabase is not configured — the app is currently running only in this browser ' +
+             '(localStorage). Please fill in SUPABASE_URL and SUPABASE_ANON_KEY ' +
+             'at the end of the HTML file.', '#8a5a00');
   return;
 }
 if (!window.supabase || !window.supabase.createClient) {
-  showBanner('⚠ supabase-js load nahi hui — internet connection check karein.', '#b3261e');
+  showBanner('⚠ supabase-js failed to load — please check your internet connection.', '#b3261e');
   return;
 }
 
@@ -4145,7 +4145,7 @@ const cache = {
    naam se alag: vgrand_reports, elevation_reports, ...            */
 function PFX(projectId) {
   const p = cache.prefix[projectId || currentProjectId()];
-  if (!p) throw new Error('Project abhi load nahi hua');
+  if (!p) throw new Error('Project is not loaded yet');
   return p;
 }
 function T(name, projectId) { return PFX(projectId) + '_' + name; }
@@ -4164,8 +4164,8 @@ function enqueue(label, fn) {
   pending++; updateSyncBadge();
   queue = queue.then(fn).catch(err => {
     console.error('[Supabase] ' + label + ' failed:', err);
-    showBanner('Save nahi ho saka (' + label + '): ' + (err.message || err) +
-               ' — data is browser mein mehfooz hai, dobara koshish karein.', '#b3261e', 8000);
+    showBanner('Could not save (' + label + '): ' + (err.message || err) +
+               ' — the data is safe in this browser, please try again.', '#b3261e', 8000);
   }).then(() => { pending--; updateSyncBadge(); });
   return queue;
 }
@@ -4823,7 +4823,7 @@ window.populateLoginUserOptions = async function () {
     sel.innerHTML = '<option value="">— Connection error —</option>';
     const err = document.getElementById('loginError');
     if (err) {
-      err.textContent = 'Server se rabta nahi ho saka: ' + (e.message || e);
+      err.textContent = 'Could not connect to the server: ' + (e.message || e);
       err.style.display = 'block';
     }
   }
@@ -4846,7 +4846,7 @@ window.attemptLogin = async function () {
     if (error) throw error;
     user = Array.isArray(data) ? data[0] : data;
   } catch (e) {
-    err.textContent = 'Server se rabta nahi ho saka: ' + (e.message || e);
+    err.textContent = 'Could not connect to the server: ' + (e.message || e);
     err.style.display = 'block'; return;
   }
 
@@ -4880,7 +4880,7 @@ window.confirmAdminGate = async function () {
   const err  = document.getElementById('adminGateError');
 
   if (!cache.me || cache.me.role !== 'Admin') {
-    err.textContent = 'Sirf Admin ye kaam kar sakta hai.';
+    err.textContent = 'Only an Admin can perform this action.';
     err.style.display = 'block'; return;
   }
   try {
@@ -4930,7 +4930,7 @@ window.openProject = function (id) {
     })
     .catch(err => {
       console.error(err);
-      showBanner('Project load nahi hua: ' + (err.message || err), '#b3261e', 0);
+      showBanner('Project failed to load: ' + (err.message || err), '#b3261e', 0);
     });
 };
 
@@ -4964,17 +4964,17 @@ window.exportAllData = function () {
 
 const _exportFullApp = window.exportFullAppWithData;
 window.exportFullAppWithData = function () {
-  alert('Supabase mode mein "Share App (all data)" ka matlab nahi rehta — ' +
-        'data ab server par hai, HTML file mein nahi.\n\n' +
-        'Doosron ko access dene ke liye unhen Supabase mein user bana kar ' +
-        'core.project_members mein add karein.');
+  alert('"Share App (all data)" is not meaningful in Supabase mode — ' +
+        'the data is now on the server, not in the HTML file.\n\n' +
+        'To give others access, create a user for them in Supabase and ' +
+        'add them to core.project_members.');
 };
 
 /* Backup / Restore — Supabase mode mein confuse na karen */
 window.importAllDataFile = function () {
-  alert('Supabase mode mein import band hai — data server par mehfooz hai.\n\n' +
-        'Purana localStorage data upload karna ho to Setup ke sab se neeche ' +
-        '"Push local data to Supabase" button use karein.');
+  alert('Import is disabled in Supabase mode — the data is safe on the server.\n\n' +
+        'To upload old localStorage data, use the "Push local data to Supabase" ' +
+        'button at the bottom of the Setup page.');
 };
 
 
@@ -4983,17 +4983,17 @@ const QC_UPLOAD_PASSWORD = 'omer1234hamza';
 
 window.qcMigrateLocalToSupabase = async function () {
   const pid = currentProjectId();
-  if (!pid) { alert('Pehle wo project kholen jismein data daalna hai.'); return; }
+  if (!pid) { alert('First open the project you want to put the data into.'); return; }
 
   /* ---- password ---- */
-  const pw = await qcPrompt('Ye purana data "' + projectName() + '" mein upload kar dega.\n\n' +
-                    'Upload password likhein:', '', {title:'Upload password', password:true});
+  const pw = await qcPrompt('This will upload the old data into "' + projectName() + '".\n\n' +
+                    'Enter the upload password:', '', {title:'Upload password', password:true});
   if (pw === null) return;
-  if (pw !== QC_UPLOAD_PASSWORD) { alert('Password ghalat hai.'); return; }
+  if (pw !== QC_UPLOAD_PASSWORD) { alert('Incorrect password.'); return; }
 
   /* ---- asli localStorage se parhein (cache se nahi) ---- */
   const RS = window.__qcRealStorage;
-  if (!RS) { alert('Purana data parha nahi ja saka.'); return; }
+  if (!RS) { alert('The old data could not be read.'); return; }
 
   const read = function (key) {
     try { const v = RS.get(key); return v ? JSON.parse(v) : null; } catch (e) { return null; }
@@ -5011,15 +5011,15 @@ window.qcMigrateLocalToSupabase = async function () {
   if (obsRaw && obsRaw.length) found += obsRaw.length;
 
   if (!found) {
-    alert('Is browser mein "' + projectName() + '" ka purana data nahi mila.\n\n' +
-          'Migration usi computer/browser par chalayein jahan app pehle chalti thi.');
+    alert('No old data for "' + projectName() + '" was found in this browser.\n\n' +
+          'Run the migration on the same computer/browser where the app used to run.');
     return;
   }
 
-  if (!(await qcConfirm(found + ' items mile. Upload karein?', {title:'Confirm upload', okText:'Upload', danger:false}))) return;
+  if (!(await qcConfirm(found + ' items found. Upload them?', {title:'Confirm upload', okText:'Upload', danger:false}))) return;
 
   let n = 0;
-  showBanner('Upload chal raha hai…', '#0b1f3a', 0);
+  showBanner('Upload in progress…', '#0b1f3a', 0);
   try {
     /* setup lists */
     if (setupRaw) {
@@ -5050,13 +5050,13 @@ window.qcMigrateLocalToSupabase = async function () {
 
     await loadProjectData(pid);
     document.querySelectorAll('div').forEach(function (d) {
-      if (d.textContent === 'Upload chal raha hai…') d.remove();
+      if (d.textContent === 'Upload in progress…') d.remove();
     });
-    alert('Upload mukammal — ' + n + ' items database mein chale gaye.');
+    alert('Upload complete — ' + n + ' items were sent to the database.');
     showApp();
   } catch (e) {
     console.error(e);
-    alert('Upload fail hua: ' + (e.message || e));
+    alert('Upload failed: ' + (e.message || e));
   }
 };
 
@@ -5085,17 +5085,17 @@ window.renderSetupPage = function () {
   const div = document.createElement('div');
   div.className = 'card';
   div.innerHTML =
-    '<h2><span class="num">☁</span>Purana Data Upload Karein</h2>' +
+    '<h2><span class="num">☁</span>Upload Old Data</h2>' +
     '<p class="foot-note" style="margin-top:-6px;">' +
-      'Agar is browser mein pehle wala (offline) data mojood hai, to yahan se ek dafa ' +
-      'database mein bhej dein. Password darkar hoga.' +
+      'If the earlier (offline) data is present in this browser, you can send it ' +
+      'to the database once from here. A password is required.' +
     '</p>' +
     '<div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">' +
       '<button class="btn btn-gold" onclick="qcMigrateLocalToSupabase()" ' +
-        'style="font-size:14px; padding:10px 20px;">☁ Purana Data Database Mein Bhejein</button>' +
+        'style="font-size:14px; padding:10px 20px;">☁ Send Old Data To Database</button>' +
       (found
-        ? '<span class="badge badge-pending">' + found + ' items is browser mein mile</span>'
-        : '<span class="foot-note" style="margin:0;">Is browser mein purana data nahi mila</span>') +
+        ? '<span class="badge badge-pending">' + found + ' items found in this browser</span>'
+        : '<span class="foot-note" style="margin:0;">No old data found in this browser</span>') +
     '</div>' +
     '<p class="foot-note" style="margin-top:14px;">' +
       'Tables: <b>' + (cache.prefix[currentProjectId()] || '—') + '_*</b> &nbsp;·&nbsp; ' +
